@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Customer Churn Prediction · PBADT304</title>
+<script src="/static/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0b1020;--card:#131a33;--card2:#1a2344;--line:#27325f;--txt:#e8ecff;--mut:#98a4d4;
+--a:#7c6cff;--b:#e254b8;--ok:#34d399;--warn:#fbbf24;--bad:#f87171}
+*{box-sizing:border-box;margin:0}
+body{font-family:Inter,system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;
+background-image:radial-gradient(900px 400px at 85% -10%,rgba(124,108,255,.18),transparent),radial-gradient(700px 400px at -10% 10%,rgba(226,84,184,.12),transparent)}
+.mut{color:var(--mut)}
+
+/* ---------- opening animation ---------- */
+#splash{position:fixed;inset:0;z-index:99;display:grid;place-items:center;text-align:center;padding:24px;cursor:pointer;
+background:radial-gradient(circle at 30% 20%,#2b1f70,#0b1020 62%);transition:opacity .8s,visibility .8s}
+#splash.hide{opacity:0;visibility:hidden}
+.logo{font-size:72px;animation:float 2.4s ease-in-out infinite,pop .9s cubic-bezier(.2,1.4,.4,1) both}
+#splash h1{font-size:clamp(26px,5vw,44px);margin:10px 0 4px;background:linear-gradient(90deg,#fff,#b9b0ff,#ff9bd8);
+-webkit-background-clip:text;background-clip:text;color:transparent;animation:rise .8s .3s both}
+#splash p{color:var(--mut);animation:rise .8s .5s both}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:680px;margin:26px auto 22px}
+.chip{opacity:0;transform:translateY(12px) scale(.9);padding:7px 13px;border:1px solid var(--line);border-radius:999px;font-size:13px;
+background:rgba(255,255,255,.04);animation:chip .5s ease forwards}
+.bar{width:min(380px,80vw);height:5px;border-radius:9px;background:#1d2650;margin:0 auto 10px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--a),var(--b));animation:load 3.3s ease forwards}
+.skip{font-size:12px;color:var(--mut);opacity:.7}
+@keyframes pop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes float{50%{transform:translateY(-8px)}}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes chip{to{opacity:1;transform:none;border-color:var(--a);box-shadow:0 0 14px rgba(124,108,255,.35)}}
+@keyframes load{to{width:100%}}
+@media (prefers-reduced-motion:reduce){#splash *{animation-duration:.01s!important;animation-delay:0s!important}}
+
+/* ---------- layout ---------- */
+header{padding:26px 22px 8px;max-width:1180px;margin:auto}
+header h1{font-size:clamp(22px,3.4vw,32px)}
+header h1 span{background:linear-gradient(90deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent}
+nav{position:sticky;top:0;z-index:5;background:rgba(11,16,32,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.tabs{max-width:1180px;margin:auto;display:flex;gap:6px;overflow-x:auto;padding:10px 22px}
+.tabs button{white-space:nowrap;background:transparent;color:var(--mut);border:1px solid transparent;border-radius:10px;padding:8px 13px;cursor:font:inherit;font-size:14px}
+.tabs button:hover{color:var(--txt)}
+.tabs button.on{background:var(--card2);color:#fff;border-color:var(--a)}
+main{max-width:1180px;margin:auto;padding:20px 22px 60px}
+.sec{display:none;animation:rise .45s both}.sec.on{display:block}
+h2{font-size:22px;margin-bottom:4px}.sub{color:var(--mut);margin-bottom:18px;font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.card h3{font-size:15px;margin-bottom:10px;color:#cfd6ff}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.kpi b{display:block;font-size:26px;margin-top:4px}.kpi small{color:var(--mut)}
+.ch{position:relative;height:270px}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 11px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{background:var(--card2);color:#cfd6ff;position:sticky;top:0}
+tr:last-child td{border-bottom:0}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 4px}
+.flow span.s{padding:8px 12px;border-radius:10px;background:var(--card2);border:1px solid var(--line);font-size:13px}
+.flow span.ar{color:var(--mut)}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;border:1px solid var(--line)}
+.pill.t{background:rgba(226,84,184,.2);border-color:var(--b)}
+ul.ok{list-style:none;padding:0}ul.ok li{padding:8px 12px;margin-bottom:6px;border-radius:10px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.35)}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px}
+input,select{width:100%;background:var(--card2);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:inherit}
+input:focus,select:focus{outline:2px solid var(--a)}
+.btn{background:linear-gradient(90deg,var(--a),var(--b));border:0;color:#fff;border-radius:10px;padding:11px 20px;font:inherit;font-weight:600;cursor:pointer}
+.btn.ghost{background:var(--card2);border:1px solid var(--line);font-weight:500}
+.btn:hover{filter:brightness(1.1)}
+.row{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+.result{display:none;align-items:center;gap:26px;flex-wrap:wrap}
+.ring{--c:var(--ok);--p:0;width:150px;height:150px;border-radius:50%;display:grid;place-items:center;position:relative;
+background:conic-gradient(var(--c) calc(var(--p)*1%),#1d2650 0);transition:background .4s}
+.ring::before{content:"";position:absolute;inset:13px;border-radius:50%;background:var(--card)}
+.ring span{position:relative;font-size:30px;font-weight:700}
+.risk{font-size:22px;font-weight:700}
+.cm{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px;max-width:360px;font-size:13px;align-items:center;text-align:center}
+.cm div.c{padding:18px 6px;border-radius:10px;font-size:22px;font-weight:700}
+.alert{padding:12px 14px;border-radius:10px;margin:10px 0}
+.alert.ok{background:rgba(52,211,153,.12);border:1px solid var(--ok)}.alert.bad{background:rgba(248,113,113,.12);border:1px solid var(--bad)}
+.heat td{text-align:center;font-weight:600;min-width:62px}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--bad);color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:50}
+footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
+</style>
+</head>
+<body>
+
+<div id="splash" title="Click to skip">
+  <div>
+    <div class="logo">📉</div>
+    <h1>Customer Churn Prediction</h1>
+    <p>PBADT304 · Introduction to Data Science · Module 1</p>
+    <div class="chips" id="chips"></div>
+    <div class="bar"><i></i></div>
+    <div class="skip">click anywhere to skip</div>
+  </div>
+</div>
+
+<header>
+  <h1>📉 Customer <span>Churn Prediction</span></h1>
+  <p class="mut" style="margin-top:4px">Follow the full data science process, one step at a time.</p>
+</header>
+<nav><div class="tabs" id="tabs"></div></nav>
+
+<main>
+<!-- 1 -->
+<section class="sec" id="s0">
+  <h2>Step 1 · Define the Business Objective</h2><p class="sub">Understand the problem before touching any data.</p>
+  <div class="card"><h3>Data science process</h3><div class="flow" id="flow"></div></div>
+  <div class="grid2">
+    <div class="card"><h3>Churn vs stay in our data</h3><div class="ch" style="height:220px"><canvas id="c_obj"></canvas></div></div>
+    <div class="card"><h3>Problem</h3><p>A telecom company is losing customers. It wants to know <b>who is about to leave</b> so it can offer retention deals before they go.</p></div>
+    <div class="card"><h3>Objective</h3><p>Build a model that predicts whether a customer will <b>churn (leave)</b> or <b>stay</b>, based on account details.</p></div>
+    <div class="card"><h3>Problem type</h3><p>Binary classification: <span class="pill t">Churn = 1</span> <span class="pill">Stay = 0</span></p></div>
+    <div class="card"><h3>Success measure</h3><p>High <b>recall</b> and <b>F1-score</b> on churners, not just accuracy, because missing a churner costs more than a false alarm.</p></div>
+  </div>
+</section>
+<!-- 2 -->
+<section class="sec" id="s1">
+  <h2>Step 2 · Data Requirement</h2><p class="sub">What data do we need? Features (inputs) and a target (output).</p>
+  <div class="grid2">
+    <div class="card"><h3>Column roles and types</h3><div class="ch" style="height:230px"><canvas id="c_req"></canvas></div></div>
+    <div class="card"><h3>Unique values per column</h3><div class="ch" style="height:230px"><canvas id="c_uniq"></canvas></div></div>
+  </div>
+  <div class="card" id="reqBox"></div>
+</section>
+<!-- 3 -->
+<section class="sec" id="s2">
+  <h2>Step 3 · Data Collection</h2><p class="sub" id="srcLine"></p>
+  <div class="kpis" id="kpi2"></div>
+  <div class="grid2">
+    <div class="card"><h3>Missing values per column</h3><div class="ch" style="height:230px"><canvas id="c_miss"></canvas></div></div>
+    <div class="card"><h3>Data quality overview</h3><div class="ch" style="height:230px"><canvas id="c_qual"></canvas></div></div>
+  </div>
+  <div class="card"><h3>Use your own dataset (CSV)</h3>
+    <div class="row"><div><input type="file" id="csvFile" accept=".csv"></div><button class="btn" id="upBtn">Upload &amp; rebuild</button></div>
+    <p class="mut" style="margin-top:8px;font-size:13px">Any CSV with a churn / outcome column works. The target is auto-detected.</p></div>
+  <div class="card"><h3>First 15 rows</h3><div id="headBox"></div></div>
+</section>
+<!-- 4 -->
+<section class="sec" id="s3">
+  <h2>Step 4 · Data Preparation</h2><p class="sub">Cleaning and preprocessing: handle missing values, fix errors, make data usable.</p>
+  <div class="kpis" id="kpi3"></div>
+  <div class="grid2">
+    <div class="card"><h3>Rows and columns: before vs after</h3><div class="ch" style="height:230px"><canvas id="c_ba"></canvas></div></div>
+    <div class="card"><h3>Missing values per column (after cleaning)</h3><div class="ch" style="height:230px"><canvas id="c_miss2"></canvas></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>What was done</h3><ul class="ok" id="prepLog"></ul>
+      <p class="mut" style="font-size:13px">In the model pipeline: impute → scale numeric (StandardScaler) → one-hot encode categories.</p>
+      <p style="margin-top:12px"><a class="btn ghost" style="text-decoration:none;display:inline-block" href="/api/cleaned.csv">⬇ Download cleaned CSV</a></p></div>
+    <div class="card"><h3>Missing values after cleaning</h3><div id="missBox"></div></div>
+  </div>
+</section>
+<!-- 5 -->
+<section class="sec" id="s4">
+  <h2>Step 5 · Exploratory Data Analysis</h2><p class="sub">Visualise and summarise the data to find patterns, relationships and outliers.</p>
+  <div class="grid2">
+    <div class="card"><h3>Churn distribution</h3><div class="ch"><canvas id="c_pie"></canvas></div></div>
+    <div class="card"><h3>Histogram by churn</h3><select id="numSel" style="margin-bottom:8px"></select><div class="ch" style="height:225px"><canvas id="c_hist"></canvas></div></div>
+    <div class="card"><h3>Churn rate by category</h3><select id="catSel" style="margin-bottom:8px"></select><div class="ch" style="height:225px"><canvas id="c_cat"></canvas></div></div>
+    <div class="card"><h3>Scatter plot</h3><div class="row" style="margin-bottom:8px"><div style="flex:1"><label>X</label><select id="scX"></select></div><div style="flex:1"><label>Y</label><select id="scY"></select></div></div><div class="ch" style="height:225px"><canvas id="c_sc"></canvas></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Box plot (outliers)</h3><div class="ch" style="height:200px"><canvas id="c_box"></canvas></div><details style="margin-top:10px"><summary class="mut">Show five-number summary table</summary><div id="boxBox" style="margin-top:8px"></div></details></div>
+    <div class="card"><h3>Correlation heatmap</h3><div class="tw"><table class="heat" id="heat"></table></div></div>
+  </div>
+  <div class="card"><h3>Descriptive statistics</h3><div id="descBox"></div></div>
+  <div class="card"><h3>Hypothesis tests against churn (α = 0.05)</h3><div id="testBox"></div>
+    <p class="mut" style="font-size:13px;margin-top:8px">H0: the feature has no relationship with churn. p &lt; 0.05 means reject H0.</p></div>
+</section>
+<!-- 6 -->
+<section class="sec" id="s5">
+  <h2>Step 6 · Modelling</h2><p class="sub">Select algorithms and train them on the training data.</p>
+  <div class="card"><div class="row">
+    <div style="width:220px"><label>Test set size</label><select id="tsSel"><option value="0.2">20% (default)</option><option value="0.25">25%</option><option value="0.3">30%</option><option value="0.15">15%</option></select></div>
+    <button class="btn" id="retrainBtn">🔄 Retrain models</button><span class="mut" id="splitInfo"></span></div></div>
+  <div class="card"><h3>Train / test split</h3><div class="ch" style="height:200px"><canvas id="c_split"></canvas></div></div>
+  <div class="grid3">
+    <div class="card"><h3>Logistic Regression</h3><p class="mut">Fits an S-shaped curve that outputs the probability of churn.</p></div>
+    <div class="card"><h3>Decision Tree</h3><p class="mut">Asks a chain of yes/no questions about the features.</p></div>
+    <div class="card"><h3>Random Forest</h3><p class="mut">Many decision trees voting together for a stronger answer.</p></div>
+  </div>
+  <div class="card"><h3>Top drivers of churn (Random Forest)</h3><div class="ch" style="height:340px"><canvas id="c_imp"></canvas></div></div>
+</section>
+<!-- 7 -->
+<section class="sec" id="s6">
+  <h2>Step 7 · Evaluation</h2><p class="sub">Test the models on unseen data using accuracy, precision, recall, F1 and RMSE.</p>
+  <div class="alert ok" id="bestLine"></div>
+  <div class="card"><h3>Metrics (test set)</h3><div id="metricTable"></div></div>
+  <div class="grid2">
+    <div class="card"><h3>Model comparison</h3><div class="ch"><canvas id="c_cmp"></canvas></div></div>
+    <div class="card"><h3>Metric radar</h3><div class="ch"><canvas id="c_rad"></canvas></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Confusion matrix</h3><select id="evSel" style="margin-bottom:12px"></select><div id="cmBox"></div></div>
+    <div class="card"><h3>ROC curves</h3><div class="ch"><canvas id="c_roc"></canvas></div></div>
+  </div>
+</section>
+<!-- 8 -->
+<section class="sec" id="s7">
+  <h2>Step 8 · Deployment</h2><p class="sub">The model as a tool: staff enter a customer's details and get a churn prediction.</p>
+  <div class="card"><div class="row" style="margin-bottom:14px"><div style="width:240px"><label>Model</label><select id="algoSel"></select></div></div>
+    <div class="grid3" id="form"></div>
+    <div style="margin-top:16px"><button class="btn" id="predBtn">Predict churn</button></div></div>
+  <div class="card result" id="result">
+    <div class="ring" id="ring"><span id="ringTxt">0%</span></div>
+    <div><div class="mut">Risk level</div><div class="risk" id="riskTxt"></div><p style="margin-top:8px" id="actTxt"></p></div>
+  </div>
+</section>
+<!-- 9 -->
+<section class="sec" id="s8">
+  <h2>Step 9 · Monitoring &amp; Maintenance</h2><p class="sub">Track accuracy as new data arrives, collect feedback, and retrain when performance drops.</p>
+  <div class="card"><div class="row"><div style="width:260px"><label>Alert if accuracy falls below <b id="thVal">70%</b></label><input type="range" id="th" min="50" max="95" step="5" value="70"></div></div>
+    <div class="ch" style="margin-top:12px"><canvas id="c_mon"></canvas></div><div id="monMsg"></div>
+    <p class="mut" style="font-size:13px" id="monNote"></p></div>
+  <div class="card"><h3>Predictions made so far</h3><div class="ch" style="height:210px"><canvas id="c_pl"></canvas></div><p class="mut" id="plNote" style="font-size:13px"></p></div>
+  <div class="card"><h3>Feedback log</h3><p class="mut" style="font-size:13px;margin-bottom:10px">Predictions made in Step 8. Record what actually happened to measure live accuracy.</p>
+    <div id="logBox"></div><div id="liveAcc" style="margin-top:10px"></div></div>
+  <div class="card"><button class="btn" id="retrain2">🔄 Retrain model on current data</button></div>
+</section>
+</main>
+<footer>PBADT304 Introduction to Data Science · Customer Churn Micro Project · Built with FastAPI + scikit-learn + Chart.js (works offline)</footer>
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = v => v === null || v === undefined ? '—' : typeof v === 'number' ? (Number.isInteger(v) ? v : (v !== 0 && Math.abs(v) < 0.001 ? v.toExponential(2) : +v.toFixed(3))) : esc(v);
+const api = async (u, o) => { const r = await fetch(u, o); if (!r.ok) throw new Error((await r.text()).slice(0, 200)); return r.json(); };
+const post = (u, b) => api(u, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(b)});
+function toast(m){ const t=$('#toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none',4000); }
+function table(rows, cols){
+  if(!rows || !rows.length) return '<p class="mut">No data</p>';
+  cols = cols || Object.keys(rows[0]);
+  return `<div class="tw"><table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${fmt(r[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+const COL = {a:'#7c6cff', b:'#e254b8', ok:'#34d399', bad:'#f87171', grid:'rgba(152,164,212,.15)'};
+Chart.defaults.color = '#98a4d4'; Chart.defaults.borderColor = COL.grid; Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+const charts = {};
+function mk(id, cfg){ if(charts[id]) charts[id].destroy(); cfg.options = Object.assign({responsive:true, maintainAspectRatio:false}, cfg.options||{}); charts[id] = new Chart($('#'+id), cfg); }
+const kpi = (l, v) => `<div class="kpi"><small>${l}</small><b>${v}</b></div>`;
+
+/* ---------- opening animation ---------- */
+const STEPS = ['Business Objective','Data Requirement','Data Collection','Data Preparation','EDA','Modelling','Evaluation','Deployment','Monitoring'];
+(function splash(){
+  const box = $('#chips');
+  STEPS.forEach((s,i)=>{ const c=document.createElement('span'); c.className='chip'; c.textContent=`${i+1} · ${s}`; c.style.animationDelay=(0.6+i*0.27)+'s'; box.appendChild(c); });
+  const sp = $('#splash'); const close = () => sp.classList.add('hide');
+  sp.onclick = close; setTimeout(close, 4000);
+})();
+
+/* ---------- tabs ---------- */
+const loaded = {};
+const loaders = [loadObjective, loadReq, loadCollect, loadPrep, loadEDA, loadModelling, loadEval, loadDeploy, loadMonitor];
+STEPS.forEach((s,i)=>{ const b=document.createElement('button'); b.textContent=`${i+1} · ${s}`; b.onclick=()=>show(i); $('#tabs').appendChild(b); });
+function show(i){
+  document.querySelectorAll('.sec').forEach((e,j)=>e.classList.toggle('on', j===i));
+  document.querySelectorAll('#tabs button').forEach((e,j)=>e.classList.toggle('on', j===i));
+  location.hash = 's'+(i+1);
+  if(!loaded[i]){ loaded[i]=true; loaders[i]().catch(e=>{ loaded[i]=false; toast('Error: '+e.message); }); }
+}
+function resetAll(){ Object.keys(loaded).forEach(k=>delete loaded[k]); MODELS=null; }
+function reloadCurrent(){ const i=[...document.querySelectorAll('.sec')].findIndex(e=>e.classList.contains('on')); resetAll(); show(Math.max(i,0)); }
+let MODELS = null;
+const getModels = async () => MODELS || (MODELS = await api('/api/models'));
+
+/* ---------- 1 objective ---------- */
+async function loadObjective(){
+  const e = await api('/api/eda');
+  mk('c_obj', {type:'doughnut', data:{labels:['Stayed','Churned'], datasets:[{data:[e.counts.Stayed, e.counts.Churned], backgroundColor:[COL.a, COL.b], borderWidth:0}]}, options:{cutout:'60%'}});
+  $('#flow').innerHTML = STEPS.map((s,i)=>`<span class="s">${i+1}. ${s}</span>`).join('<span class="ar">→</span>');
+}
+/* ---------- 2 requirement ---------- */
+async function loadReq(){
+  const d = await api('/api/overview');
+  const isNum = t => /int|float/.test(t);
+  const nNum = d.columns.filter(c=>c.role==='Feature' && isNum(c.dtype)).length, nCat = d.columns.filter(c=>c.role==='Feature' && !isNum(c.dtype)).length;
+  mk('c_req', {type:'doughnut', data:{labels:['Numeric features','Categorical features','Target'], datasets:[{data:[nNum,nCat,1], backgroundColor:[COL.a,COL.ok,COL.b], borderWidth:0}]}, options:{cutout:'58%'}});
+  mk('c_uniq', {type:'bar', data:{labels:d.columns.map(c=>c.column), datasets:[{label:'Unique values', data:d.columns.map(c=>c.unique), backgroundColor:d.columns.map(c=>c.role==='TARGET'?COL.b:COL.a)}]}, options:{plugins:{legend:{display:false}}, scales:{y:{type:'logarithmic'}}}});
+  $('#reqBox').innerHTML = `<p style="margin-bottom:12px">We need customer <b>features</b> (inputs) and the outcome <span class="pill t">${esc(d.target)}</span> (did the customer leave?).</p>` +
+    table(d.columns.map(c=>({Column:c.column, Role:c.role, Type:c.dtype, Example:c.example})));
+}
+/* ---------- 3 collection ---------- */
+async function loadCollect(){
+  const d = await api('/api/overview');
+  $('#srcLine').textContent = `Source: ${d.source}. Real-world sources: databases, APIs, surveys, sensors.`;
+  $('#kpi2').innerHTML = kpi('Rows', d.rows.toLocaleString()) + kpi('Columns', d.cols) + kpi('Missing cells', d.missing) + kpi('Duplicate rows', d.duplicates) + kpi('Churn rate', (d.churn_rate*100).toFixed(1)+'%');
+  $('#headBox').innerHTML = table(d.head);
+  mk('c_miss', {type:'bar', data:{labels:d.columns.map(c=>c.column), datasets:[{label:'Missing values', data:d.columns.map(c=>c.missing), backgroundColor:COL.bad}]}, options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{precision:0}}}}});
+  const clean = Math.max(d.rows - d.duplicates, 0);
+  mk('c_qual', {type:'bar', data:{labels:['Total rows','Duplicate rows','Missing cells','Columns'], datasets:[{data:[d.rows, d.duplicates, d.missing, d.cols], backgroundColor:[COL.a, '#fbbf24', COL.bad, COL.ok]}]}, options:{plugins:{legend:{display:false}}, scales:{y:{type:'logarithmic'}}}});
+}
+$('#upBtn').onclick = async () => {
+  const f = $('#csvFile').files[0]; if(!f) return toast('Choose a CSV file first');
+  const fd = new FormData(); fd.append('file', f);
+  try { await api('/api/upload', {method:'POST', body:fd}); reloadCurrent(); } catch(e){ toast(e.message); }
+};
+/* ---------- 4 preparation ---------- */
+async function loadPrep(){
+  const d = await api('/api/preparation');
+  $('#kpi3').innerHTML = kpi('Before', `${d.before[0]} × ${d.before[1]}`) + kpi('After', `${d.after[0]} × ${d.after[1]}`);
+  $('#prepLog').innerHTML = d.log.map(l=>`<li>✔ ${esc(l)}</li>`).join('');
+  $('#missBox').innerHTML = table(d.missing);
+  mk('c_ba', {type:'bar', data:{labels:['Rows','Columns'], datasets:[{label:'Before', data:[d.before[0], d.before[1]], backgroundColor:COL.bad+'cc'},{label:'After', data:[d.after[0], d.after[1]], backgroundColor:COL.ok+'cc'}]}, options:{scales:{y:{type:'logarithmic'}}}});
+  mk('c_miss2', {type:'bar', data:{labels:d.missing.map(m=>m.column), datasets:[{label:'Missing', data:d.missing.map(m=>m.missing), backgroundColor:COL.a}]}, options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{precision:0}}}}});
+}
+/* ---------- 5 EDA ---------- */
+async function loadEDA(){
+  const d = await api('/api/eda');
+  mk('c_pie', {type:'doughnut', data:{labels:['Stayed','Churned'], datasets:[{data:[d.counts.Stayed, d.counts.Churned], backgroundColor:[COL.a, COL.b], borderWidth:0}]}, options:{cutout:'62%'}});
+  const nums = Object.keys(d.numeric), cats = Object.keys(d.categorical);
+  const fill = (sel, arr) => $(sel).innerHTML = arr.map(x=>`<option>${esc(x)}</option>`).join('');
+  fill('#numSel', nums); fill('#catSel', cats); fill('#scX', d.scatter.cols); fill('#scY', d.scatter.cols);
+  if(d.scatter.cols.length>1) $('#scY').selectedIndex = 1;
+  const box = () => { const col=$('#numSel').value, n=d.numeric[col]; if(!n) return;
+    const g=['Stayed','Churned'], b=g.map(k=>n.box[k]||[0,0,0,0,0]), eps=(Math.max(...b.map(x=>x[4]))-Math.min(...b.map(x=>x[0])))*0.004||0.01;
+    mk('c_box', {type:'bar', data:{labels:g, datasets:[
+      {label:'Min–Max', data:b.map(x=>[x[0],x[4]]), backgroundColor:'#8b95c9', barPercentage:.12, grouped:false},
+      {label:'Q1–Q3 (box)', data:b.map(x=>[x[1],x[3]]), backgroundColor:[COL.a+'cc', COL.b+'cc'], barPercentage:.6, grouped:false},
+      {label:'Median', data:b.map(x=>[x[2]-eps,x[2]+eps]), backgroundColor:'#ffffff', barPercentage:.6, grouped:false}]},
+      options:{indexAxis:'y', scales:{x:{title:{display:true,text:col}}}}}); };
+  const hist = () => { box(); const n = d.numeric[$('#numSel').value]; if(!n) return;
+    mk('c_hist', {type:'bar', data:{labels:n.labels, datasets:[{label:'Stayed', data:n.stayed, backgroundColor:COL.a+'bb'},{label:'Churned', data:n.churned, backgroundColor:COL.b+'bb'}]}, options:{scales:{x:{stacked:false}}}}); };
+  const cat = () => { const rows = d.categorical[$('#catSel').value]; if(!rows) return;
+    mk('c_cat', {type:'bar', data:{labels:rows.map(r=>r.category), datasets:[{label:'Churn rate (%)', data:rows.map(r=>+(r.rate*100).toFixed(1)), backgroundColor:COL.b}]}, options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}}); };
+  const sc = () => { const x=$('#scX').value, y=$('#scY').value; if(!x||!y) return;
+    const pts = k => d.scatter.rows.filter(r=>r._churn===k).map(r=>({x:r[x], y:r[y]}));
+    mk('c_sc', {type:'scatter', data:{datasets:[{label:'Stayed', data:pts(0), backgroundColor:COL.a+'88', pointRadius:3},{label:'Churned', data:pts(1), backgroundColor:COL.b+'99', pointRadius:3}]}, options:{scales:{x:{title:{display:true,text:x}}, y:{title:{display:true,text:y}}}}}); };
+  $('#numSel').onchange = hist; $('#catSel').onchange = cat; $('#scX').onchange = sc; $('#scY').onchange = sc;
+  hist(); cat(); sc();
+  $('#boxBox').innerHTML = table(nums.flatMap(n => ['Stayed','Churned'].map((g)=>{ const b=d.numeric[n].box[g]||[]; return {Feature:n, Group:g, Min:b[0], Q1:b[1], Median:b[2], Q3:b[3], Max:b[4]}; })));
+  const cr = d.corr, color = v => v>=0 ? `rgba(124,108,255,${Math.abs(v)*.85})` : `rgba(248,113,113,${Math.abs(v)*.85})`;
+  $('#heat').innerHTML = `<thead><tr><th></th>${cr.cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>` +
+    cr.matrix.map((row,i)=>`<tr><th>${esc(cr.cols[i])}</th>${row.map(v=>`<td style="background:${color(v)}">${v.toFixed(2)}</td>`).join('')}</tr>`).join('') + '</tbody>';
+  $('#descBox').innerHTML = table(d.describe);
+  $('#testBox').innerHTML = table(d.tests.map(t=>({Feature:t.feature, Test:t.test, Statistic:t.statistic, 'p-value':t.p_value, 'Significant?':t.significant})));
+}
+/* ---------- 6 modelling ---------- */
+async function loadModelling(){
+  const m = await getModels();
+  $('#tsSel').value = String(m.test_size);
+  mk('c_split', {type:'doughnut', data:{labels:['Training rows','Test rows'], datasets:[{data:[m.train_rows, m.test_rows], backgroundColor:[COL.a, COL.b], borderWidth:0}]}, options:{cutout:'60%'}});
+  $('#splitInfo').textContent = `Training on ${m.train_rows.toLocaleString()} rows · testing on ${m.test_rows.toLocaleString()} rows`;
+  mk('c_imp', {type:'bar', data:{labels:m.importance.map(i=>i.feature), datasets:[{label:'Importance', data:m.importance.map(i=>i.value), backgroundColor:COL.a}]}, options:{indexAxis:'y', plugins:{legend:{display:false}}}});
+}
+async function retrain(){
+  try { await post('/api/retrain', {test_size:+$('#tsSel').value, seed:42}); reloadCurrent(); toast('Models retrained ✔'); $('#toast').style.background='#34d399'; setTimeout(()=>$('#toast').style.background='',4200); }
+  catch(e){ toast(e.message); }
+}
+$('#retrainBtn').onclick = retrain; $('#retrain2').onclick = retrain;
+/* ---------- 7 evaluation ---------- */
+async function loadEval(){
+  const m = await getModels();
+  $('#bestLine').innerHTML = `🏆 Best model by F1-score: <b>${esc(m.best)}</b>`;
+  $('#metricTable').innerHTML = table(m.metrics, ['model','accuracy','precision','recall','f1','roc_auc','rmse']);
+  const keys = ['accuracy','precision','recall','f1','roc_auc'], cols = [COL.a, COL.b, COL.ok];
+  mk('c_cmp', {type:'bar', data:{labels:keys, datasets:m.metrics.map((r,i)=>({label:r.model, data:keys.map(k=>+r[k].toFixed(3)), backgroundColor:cols[i%3]}))}, options:{scales:{y:{beginAtZero:true,max:1}}}});
+  const rc = [COL.a, COL.b, COL.ok];
+  mk('c_rad', {type:'radar', data:{labels:keys, datasets:m.metrics.map((r,i)=>({label:r.model, data:keys.map(k=>+r[k].toFixed(3)), borderColor:rc[i%3], backgroundColor:rc[i%3]+'22', pointRadius:3}))}, options:{scales:{r:{min:0,max:1,grid:{color:COL.grid},angleLines:{color:COL.grid},ticks:{backdropColor:'transparent'}}}}});
+  mk('c_roc', {type:'scatter', data:{datasets:[...m.metrics.map((r,i)=>({label:`${r.model} (AUC ${r.roc_auc.toFixed(2)})`, data:m.details[r.model].roc, showLine:true, pointRadius:0, borderColor:rc[i%3], borderWidth:2})), {label:'Random', data:[{x:0,y:0},{x:1,y:1}], showLine:true, pointRadius:0, borderColor:'#667', borderDash:[5,5]}]}, options:{scales:{x:{title:{display:true,text:'False positive rate'},min:0,max:1}, y:{title:{display:true,text:'True positive rate'},min:0,max:1}}}});
+  $('#evSel').innerHTML = m.metrics.map(r=>`<option ${r.model===m.best?'selected':''}>${esc(r.model)}</option>`).join('');
+  const cm = () => { const [[tn,fp],[fn,tp]] = m.details[$('#evSel').value].confusion;
+    $('#cmBox').innerHTML = `<div class="cm"><div></div><div class="mut">Pred: Stayed</div><div class="mut">Pred: Churned</div>
+      <div class="mut">Actual: Stayed</div><div class="c" style="background:rgba(52,211,153,.25)">${tn}<br><small>TN</small></div><div class="c" style="background:rgba(248,113,113,.2)">${fp}<br><small>FP</small></div>
+      <div class="mut">Actual: Churned</div><div class="c" style="background:rgba(248,113,113,.2)">${fn}<br><small>FN</small></div><div class="c" style="background:rgba(52,211,153,.25)">${tp}<br><small>TP</small></div></div>
+      <p class="mut" style="margin-top:10px;font-size:13px">TP = churners caught · FN = churners missed · FP = false alarms · TN = correctly stayed</p>`; };
+  $('#evSel').onchange = cm; cm();
+}
+/* ---------- 8 deployment ---------- */
+async function loadDeploy(){
+  const s = await api('/api/schema');
+  $('#algoSel').innerHTML = s.algos.map(a=>`<option ${a===s.best?'selected':''}>${esc(a)}</option>`).join('');
+  $('#form').innerHTML = s.features.map((f,i)=> f.kind==='number'
+    ? `<div><label>${esc(f.name)} <span class="mut">(${fmt(f.min)}–${fmt(f.max)})</span></label><input type="number" id="f${i}" value="${f.median}" min="${f.min}" max="${f.max}" step="any"></div>`
+    : `<div><label>${esc(f.name)}</label><select id="f${i}">${f.options.map((o,j)=>`<option value="${j}">${esc(o)}</option>`).join('')}</select></div>`).join('');
+  $('#predBtn').onclick = async () => {
+    const inputs = {}; s.features.forEach((f,i)=>{ const el=$('#f'+i); inputs[f.name] = f.kind==='number' ? parseFloat(el.value) : f.options[+el.value]; });
+    try {
+      const r = await post('/api/predict', {algo:$('#algoSel').value, inputs});
+      const pct = Math.round(r.probability*100), c = r.risk==='High'?COL.bad : r.risk==='Medium'?'#fbbf24':COL.ok;
+      $('#result').style.display = 'flex'; $('#ring').style.setProperty('--c', c);
+      let n = 0; const t = setInterval(()=>{ n = Math.min(pct, n+Math.max(1,Math.round(pct/20))); $('#ring').style.setProperty('--p', n); $('#ringTxt').textContent = n+'%'; if(n>=pct) clearInterval(t); }, 25);
+      $('#riskTxt').textContent = r.risk; $('#riskTxt').style.color = c; $('#actTxt').innerHTML = '<b>Suggested action:</b> ' + esc(r.action);
+    } catch(e){ toast(e.message); }
+  };
+}
+/* ---------- 9 monitoring ---------- */
+async function loadMonitor(){
+  const m = await api('/api/monitoring');
+  const draw = () => { const th = +$('#th').value; $('#thVal').textContent = th+'%';
+    mk('c_mon', {type:'line', data:{labels:m.accuracy.map((_,i)=>'Batch '+(i+1)), datasets:[{label:'Accuracy (%)', data:m.accuracy.map(a=>+(a*100).toFixed(1)), borderColor:COL.a, backgroundColor:COL.a+'33', fill:true, tension:.3, pointRadius:4},{label:'Alert threshold', data:m.accuracy.map(()=>th), borderColor:COL.bad, borderDash:[6,6], pointRadius:0}]}, options:{scales:{y:{min:40,max:100}}}});
+    const bad = Math.min(...m.accuracy)*100 < th;
+    $('#monMsg').innerHTML = bad ? '<div class="alert bad">⚠️ Accuracy dropped below the threshold. Gather more data and retrain the model.</div>' : '<div class="alert ok">✅ Accuracy is above the threshold. The model is healthy.</div>'; };
+  $('#th').oninput = draw; draw();
+  $('#monNote').textContent = `Simulated using the held-out test data of ${m.model} in batches of ${m.batch_size} customers.`;
+  await loadLog();
+}
+async function loadLog(){
+  const d = await api('/api/log');
+  mk('c_pl', {type:'bar', data:{labels:d.rows.map(r=>'#'+r.id), datasets:[{label:'Churn probability (%)', data:d.rows.map(r=>+(r.probability*100).toFixed(1)), backgroundColor:d.rows.map(r=>r.probability>=.6?COL.bad:r.probability>=.35?'#fbbf24':COL.ok)}]}, options:{plugins:{legend:{display:false}}, scales:{y:{min:0,max:100}}}});
+  $('#plNote').textContent = d.rows.length ? 'Green = low risk, amber = medium, red = high risk.' : 'Make predictions in Step 8 and they appear here.';
+  if(!d.rows.length){ $('#logBox').innerHTML = '<p class="mut">No predictions yet. Make some in Step 8.</p>'; $('#liveAcc').innerHTML=''; return; }
+  $('#logBox').innerHTML = `<div class="tw"><table><thead><tr><th>#</th><th>Model</th><th>Probability</th><th>Predicted</th><th>Actual outcome</th></tr></thead><tbody>` +
+    d.rows.map(r=>`<tr><td>${r.id}</td><td>${esc(r.algo)}</td><td>${(r.probability*100).toFixed(1)}%</td><td>${r.predicted}</td><td><select data-id="${r.id}" style="min-width:130px"><option value="">—</option><option ${r.actual==='Churned'?'selected':''}>Churned</option><option ${r.actual==='Stayed'?'selected':''}>Stayed</option></select></td></tr>`).join('') + '</tbody></table></div>';
+  document.querySelectorAll('#logBox select').forEach(s=>s.onchange = async () => { await post('/api/feedback', {id:+s.dataset.id, actual:s.value||null}); loadLog(); });
+  $('#liveAcc').innerHTML = d.live_accuracy===null ? '' : `<div class="kpi" style="display:inline-block"><small>Live accuracy from feedback (${d.n_feedback} cases)</small><b>${Math.round(d.live_accuracy*100)}%</b></div>`;
+}
+
+/* ---------- start ---------- */
+const h = parseInt((location.hash||'#s1').slice(2)) - 1;
+show(h >= 0 && h < 9 ? h : 0);
+</script>
+</body>
+</html>
